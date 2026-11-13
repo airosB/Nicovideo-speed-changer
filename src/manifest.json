@@ -13,7 +13,17 @@
       "matches": [
         "https://www.nicovideo.jp/watch/*"
       ],
+      "js": ["inject.js"],
+      "world": "MAIN",
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://www.nicovideo.jp/watch/*"
+      ],
       "js": ["main.js"],
+      "run_at": "document_start",
       "all_frames": true
     }
   ]

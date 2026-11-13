@@ -28,24 +28,29 @@ const _numberFormat = (number) => {
     return `${number}`
 }
 
+// inject.js（ページコンテキスト）に目標速度を送る
+const _sendRate = () => {
+    window.dispatchEvent(new CustomEvent('__nvsc:set', { detail: { rate: playbackRate } }))
+}
+
 // 処理済みのvideo要素を管理して二重適用を防ぐ
 const processedVideos = new WeakSet()
 
 /**
- * video要素に速度変更とコントローラー表示を適用
+ * video要素にコントローラー表示を挿入し、速度を即時適用する
  */
 const applyToVideo = (video) => {
     if (processedVideos.has(video)) return
     processedVideos.add(video)
 
     video.insertAdjacentHTML('beforebegin', controllerHtml)
-    setInterval(() => {
-        video.playbackRate = playbackRate
-    }, refreshRateMilliSecond)
+    _sendRate()
 }
 
-// 速度表示の更新ループ — 毎回DOMを再クエリしてSPA遷移後の新要素も拾う
+// 速度の維持と表示の更新ループ
+// inject.js 側でプロトタイプを上書きしているため、これはニコニコ側に上書きされない
 setInterval(() => {
+    _sendRate()
     document.querySelectorAll('.nvsc-current-rate').forEach((meter) => {
         meter.innerText = _numberFormat(playbackRate)
     })
@@ -78,9 +83,11 @@ const registerShortcutKeys = () => {
     window.addEventListener('keydown', (e) => {
         if (e.key === 's') {
             playbackRate = _round2(Math.max(0.1, playbackRate - rateChangeStep))
+            _sendRate()
             e.preventDefault()
         } else if (e.key === 'd') {
             playbackRate = _round2(Math.min(16, playbackRate + rateChangeStep))
+            _sendRate()
             e.preventDefault()
         } else if (e.key === 'r') {
             if (playbackRate !== 1) {
@@ -89,6 +96,7 @@ const registerShortcutKeys = () => {
             } else {
                 playbackRate = _round2(prevRate)
             }
+            _sendRate()
 
             // ctrl+r のリロードのみ貫通させる
             if (!e.ctrlKey) {
