@@ -10,7 +10,7 @@ let playbackRate = 1.6 // デフォルト値としても作用する
  * @type {string}
  */
 const controllerHtml = `
-    <div class="nvsc-controller" style="top:0px; left:0px; position:relative; display:inline-block; opacity:0.6; font-size:10px; z-index:10; color:white; background:black; border-radius:4px; padding:2px 5px;">
+    <div class="nvsc-controller" style="top:5px; left:7px; position:relative; display:inline-block; opacity:0.6; font-size:10px; z-index:10; color:white; background:black; border-radius:4px; padding:2px 5px;">
         <span class="nvsc-current-rate"></span>
     </div>
 `
