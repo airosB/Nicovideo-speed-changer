@@ -11,36 +11,64 @@ let playbackRate = 1.6 // デフォルト値としても作用する
  */
 const controllerHtml = `
     <div class="nvsc-controller" style="top:0px; left:0px; position:relative; opacity:0.6; font-size:10px; z-index:10; color:white;">
-        <span class="nvsc-current-rate">${playbackRate}</span>
+        <span class="nvsc-current-rate"></span>
     </div>
 `
 
 /**
- * コントローラーを表示
+ * 0.1単位で丸める
  */
-const displayControl = (videos) => {
-    videos.forEach((video) => {
-        video.insertAdjacentHTML('beforebegin', controllerHtml);
-    })
+const _round2 = (number) => Math.round(number * 10) / 10
 
-    const speedMeters = document.querySelectorAll('.nvsc-current-rate')
+/**
+ * 0.1刻みの数値フォーマット
+ */
+const _numberFormat = (number) => {
+    if (number % 1 === 0) return `${number}.0`
+    return `${number}`
+}
+
+// 処理済みのvideo要素を管理して二重適用を防ぐ
+const processedVideos = new WeakSet()
+
+/**
+ * video要素に速度変更とコントローラー表示を適用
+ */
+const applyToVideo = (video) => {
+    if (processedVideos.has(video)) return
+    processedVideos.add(video)
+
+    video.insertAdjacentHTML('beforebegin', controllerHtml)
     setInterval(() => {
-        speedMeters.forEach((meter) => {
-            meter.innerText = _numberFormat(playbackRate)
-        })
-    }, 50)
+        video.playbackRate = playbackRate
+    }, refreshRateMilliSecond)
+}
+
+// 速度表示の更新ループ — 毎回DOMを再クエリしてSPA遷移後の新要素も拾う
+setInterval(() => {
+    document.querySelectorAll('.nvsc-current-rate').forEach((meter) => {
+        meter.innerText = _numberFormat(playbackRate)
+    })
+}, refreshRateMilliSecond)
+
+/**
+ * 追加されたノードとその子孫からvideo要素を探して適用
+ */
+const scanAndApply = (node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return
+    if (node.tagName === 'VIDEO') applyToVideo(node)
+    node.querySelectorAll('video').forEach(applyToVideo)
 }
 
 /**
- * 全てのVideoに速度変更を適用
+ * video要素の追加をDOM全体で監視
+ * SPA遷移時に新しいvideo要素が追加されたときも自動で拾える
  */
-const applyVideoSpeed = (videos) => {
-    setInterval(() => {
-        videos.forEach((video) => {
-            video.playbackRate = playbackRate
-        })
-    }, refreshRateMilliSecond)
-}
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach(scanAndApply)
+    })
+})
 
 /**
  * ショートカットキーのイベント登録
@@ -71,36 +99,18 @@ const registerShortcutKeys = () => {
 }
 
 /**
- * 0.1単位で丸める
- * @param number
- * @returns {number}
- * @private
+ * 監視を開始して既存のvideo要素にも適用
  */
-const _round2 = (number) => {
-    return Math.round(number * 10) / 10
+const init = () => {
+    observer.observe(document.body, { childList: true, subtree: true })
+    document.querySelectorAll('video').forEach(applyToVideo)
 }
 
-/**
- * 0.1刻みの数値フォーマット
- * @param number
- * @returns {`${string}.0`|string}
- * @private
- */
-const _numberFormat = (number) => {
-    if (number % 1 === 0) {
-        return `${number}.0`
-    } else {
-        return `${number}`
-    }
+// DOMContentLoaded前に実行された場合はイベント待ち
+if (document.body) {
+    init()
+} else {
+    document.addEventListener('DOMContentLoaded', init)
 }
 
-/**
- * なんとなくロード後に発火させる
- */
-const fireWhenLoad = () => {
-    const videos = document.querySelectorAll('video')
-    displayControl(videos)
-    applyVideoSpeed(videos)
-}
-setTimeout(fireWhenLoad, 2000)
 registerShortcutKeys()
